@@ -42,8 +42,8 @@ export async function listCanvasFiles(
 
   const response: any = await client.files.list({
     token,
-    types: 'canvas',
-    limit: 100,
+    types: 'spaces',
+    count: 100,
   });
 
   const files: CanvasFileMeta[] = (response?.files || [])
@@ -75,19 +75,6 @@ export function toSlackOption(file: CanvasFileMeta): PlainTextOption {
     },
     value: file.id,
   };
-}
-
-export function filterCanvasFiles(
-  files: CanvasFileMeta[],
-  query?: string
-): CanvasFileMeta[] {
-  if (!query) {
-    return files;
-  }
-  const needle = query.toLowerCase();
-  return files.filter((file) =>
-    file.title.toLowerCase().includes(needle)
-  );
 }
 
 export async function getCanvasFileById(

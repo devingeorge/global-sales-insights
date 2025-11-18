@@ -1,7 +1,8 @@
 import { WebClient, View } from '@slack/web-api';
+import { PlainTextOption } from '@slack/types';
 import { getUserPreference, resetUserPreference, updateUserPreference } from '../store/userPrefs';
 import { DataSourceOption } from '../types';
-import { getCanvasFileById } from '../services/canvasFiles';
+import { CanvasFileMeta, getCanvasFileById, listCanvasFiles, toSlackOption } from '../services/canvasFiles';
 
 export async function openSettingsModal({
   client,
@@ -13,12 +14,19 @@ export async function openSettingsModal({
   userId: string;
 }) {
   const preference = getUserPreference(userId);
+  let canvases: CanvasFileMeta[] = [];
+  try {
+    canvases = await listCanvasFiles(client);
+  } catch (error) {
+    console.warn('[settings] Unable to load Canvas list', error);
+  }
   await client.views.open({
     trigger_id: triggerId,
     view: buildSettingsView({
       selectedSource: preference.dataSource,
       selectedCanvasId: preference.selectedCanvasId,
       selectedCanvasTitle: preference.selectedCanvasTitle,
+      canvases,
     }),
   });
 }
@@ -27,6 +35,7 @@ interface BuildSettingsArgs {
   selectedSource: DataSourceOption;
   selectedCanvasId?: string;
   selectedCanvasTitle?: string;
+  canvases: CanvasFileMeta[];
 }
 
 interface SelectedCanvasOption {
@@ -40,14 +49,18 @@ function buildSettingsView({
   selectedSource,
   selectedCanvasId,
   selectedCanvasTitle,
+  canvases,
 }: BuildSettingsArgs): View {
-  const initialCanvasOption =
-    selectedCanvasId && selectedCanvasTitle
-      ? {
-          text: { type: 'plain_text', text: selectedCanvasTitle.slice(0, 75) },
-          value: selectedCanvasId,
-        }
-      : undefined;
+  const canvasOptions = canvases.map(toSlackOption);
+  let selectedCanvas = canvasOptions.find((option) => option.value === selectedCanvasId);
+  if (selectedCanvasId && !selectedCanvas && selectedCanvasTitle) {
+    const fallbackOption: PlainTextOption = {
+      text: { type: 'plain_text', text: `${selectedCanvasTitle} (not found)` },
+      value: selectedCanvasId,
+    };
+    canvasOptions.unshift(fallbackOption);
+    selectedCanvas = fallbackOption;
+  }
   return {
     type: 'modal',
     callback_id: 'settings_modal',
@@ -80,14 +93,19 @@ function buildSettingsView({
         label: { type: 'plain_text', text: 'Slack Canvas (used when Prebuilt is selected)' },
         hint: {
           type: 'plain_text',
-          text: 'Start typing to search the Slack Canvas library.',
+          text: canvasOptions.length ? 'Pick the Canvas you want sent instantly.' : 'No canvases found. Create one in Slack first.',
         },
         element: {
-          type: 'external_select',
+          type: 'static_select',
           action_id: 'canvas_select_action',
-          placeholder: { type: 'plain_text', text: 'Search Slack Canvases' },
-          min_query_length: 1,
-          initial_option: initialCanvasOption,
+          placeholder: {
+            type: 'plain_text',
+            text: canvasOptions.length ? 'Select a Canvas' : 'No canvases available',
+          },
+          options: canvasOptions.length
+            ? canvasOptions
+            : [{ text: { type: 'plain_text', text: 'No canvases available' }, value: 'none' }],
+          initial_option: selectedCanvas,
         },
       },
       {
@@ -173,6 +191,12 @@ export async function handleSettingsReset({
   viewHash?: string;
 }) {
   const preference = resetUserPreference(userId);
+  let canvases: CanvasFileMeta[] = [];
+  try {
+    canvases = await listCanvasFiles(client);
+  } catch (error) {
+    console.warn('[settings] Unable to load Canvas list during reset', error);
+  }
   await client.views.update({
     view_id: viewId,
     hash: viewHash,
@@ -180,6 +204,7 @@ export async function handleSettingsReset({
       selectedSource: preference.dataSource,
       selectedCanvasId: preference.selectedCanvasId,
       selectedCanvasTitle: preference.selectedCanvasTitle,
+      canvases,
     }),
   });
   await client.chat.postMessage({
