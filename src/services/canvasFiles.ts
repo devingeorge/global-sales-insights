@@ -42,7 +42,7 @@ export async function listCanvasFiles(
 
   const response: any = await client.files.list({
     token,
-    types: 'canvas',
+    types: 'spaces',
     count: 100,
   });
 
