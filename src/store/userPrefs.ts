@@ -6,6 +6,8 @@ export interface UserPreference {
   userId: string;
   dataSource: DataSourceOption;
   viewAsUserId?: string;
+  selectedCanvasId?: string;
+  selectedCanvasTitle?: string;
   updatedAt: string;
 }
 
@@ -40,16 +42,20 @@ function persist() {
 
 ensureStorage();
 
+function createFreshPreference(userId: string): UserPreference {
+  return {
+    userId,
+    dataSource: defaultDataSource,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function getUserPreference(userId: string): UserPreference {
   const pref = cache.get(userId);
   if (pref) {
     return pref;
   }
-  const fresh: UserPreference = {
-    userId,
-    dataSource: defaultDataSource,
-    updatedAt: new Date().toISOString(),
-  };
+  const fresh = createFreshPreference(userId);
   cache.set(userId, fresh);
   persist();
   return fresh;
@@ -69,4 +75,11 @@ export function updateUserPreference(
   cache.set(userId, next);
   persist();
   return next;
+}
+
+export function resetUserPreference(userId: string): UserPreference {
+  const fresh = createFreshPreference(userId);
+  cache.set(userId, fresh);
+  persist();
+  return fresh;
 }

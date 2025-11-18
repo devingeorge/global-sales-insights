@@ -5,7 +5,7 @@ import { openTemplateModal } from './modals/executiveBrief/openTemplateModal';
 import { buildInputsModal } from './modals/executiveBrief/openInputsModal';
 import { DataSourceOption } from './types';
 import { handleExecutiveBriefSubmission } from './modals/executiveBrief/submit';
-import { openSettingsModal, handleSettingsSubmission } from './modals/settingsModal';
+import { openSettingsModal, handleSettingsSubmission, handleSettingsReset } from './modals/settingsModal';
 import { updateUserPreference } from './store/userPrefs';
 
 dotenv.config();
@@ -90,12 +90,37 @@ app.action('action_settings', async ({ ack, body, client, logger }) => {
   }
 });
 
+app.action('settings_reset_action', async ({ ack, body, client, logger }) => {
+  await ack();
+  try {
+    const view = (body as any).view;
+    if (!view?.id) {
+      return;
+    }
+    await handleSettingsReset({
+      client,
+      userId: body.user.id,
+      viewId: view.id,
+      viewHash: view.hash,
+    });
+  } catch (error) {
+    logger.error('Failed to reset settings', error);
+  }
+});
+
 app.view('settings_modal', async ({ ack, body, view, client, logger }) => {
   await ack();
   try {
     const dataSource = view.state.values.data_source?.data_source_action?.selected_option?.value as DataSourceOption;
+    const canvasSelection =
+      view.state.values.canvas_select?.canvas_select_action?.selected_option || undefined;
     if (dataSource) {
-      await handleSettingsSubmission({ client, userId: body.user.id, dataSource });
+      await handleSettingsSubmission({
+        client,
+        userId: body.user.id,
+        dataSource,
+        selectedCanvasOption: canvasSelection,
+      });
       await publishHome({ client, userId: body.user.id });
     }
   } catch (error) {
@@ -108,27 +133,12 @@ app.view('executive_brief_template', async ({ ack, view, logger }) => {
     const metadata = JSON.parse(view.private_metadata || '{}');
     const dataSource = (metadata.dataSource as DataSourceOption) || 'mock';
     let templateId = 'executive_brief';
-    let prebuiltId: string | undefined;
-
-    if (dataSource === 'prebuilt') {
-      prebuiltId = view.state.values.prebuilt_template?.prebuilt_select?.selected_option?.value;
-      if (!prebuiltId) {
-        await ack({
-          response_action: 'errors',
-          errors: { prebuilt_template: 'Select a Canvas to continue.' },
-        });
-        return;
-      }
-      templateId = 'prebuilt_canvas';
-    } else {
-      templateId =
-        view.state.values.template_select?.template_action?.selected_option?.value || 'executive_brief';
-    }
+    templateId =
+      view.state.values.template_select?.template_action?.selected_option?.value || 'executive_brief';
 
     const nextView = buildInputsModal({
       dataSource,
       templateId,
-      prebuiltId,
       viewAsUserId: metadata.viewAsUserId,
     });
 
