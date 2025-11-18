@@ -19,6 +19,8 @@ const canvasInfoCache = new Map<
   string,
   { expiresAt: number; file: CanvasFileMeta }
 >();
+const canvasUserToken = process.env.SLACK_USER_TOKEN;
+const canvasUserClient = canvasUserToken ? new WebClient(canvasUserToken) : null;
 
 function normalizeCanvas(file: any): CanvasFileMeta | null {
   if (!file?.id) {
@@ -40,8 +42,11 @@ export async function listCanvasFiles(
     return canvasListCache.files;
   }
 
-  const response: any = await client.files.list({
-    token,
+  const apiClient = canvasUserClient || client;
+  const authToken = canvasUserToken || token;
+
+  const response: any = await apiClient.files.list({
+    token: authToken,
     types: 'spaces',
     count: 100,
   });
@@ -88,8 +93,11 @@ export async function getCanvasFileById(
     return cached.file;
   }
 
-  const response: any = await client.files.info({
-    token,
+  const apiClient = canvasUserClient || client;
+  const authToken = canvasUserToken || token;
+
+  const response: any = await apiClient.files.info({
+    token: authToken,
     file: fileId,
   });
 

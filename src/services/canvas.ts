@@ -43,44 +43,6 @@ export async function deliverBrief(args: {
   });
 }
 
-export async function shareExistingCanvas({
-  client,
-  userId,
-  canvasId,
-  canvasTitle,
-}: {
-  client: WebClient;
-  userId: string;
-  canvasId: string;
-  canvasTitle?: string;
-}): Promise<boolean> {
-  if (!canvasUserClient) {
-    console.warn('[canvas] Missing Canvas user token; cannot share existing Canvas.');
-    await client.chat.postMessage({
-      channel: userId,
-      text: 'Canvas sharing is unavailable because SLACK_USER_TOKEN is not configured.',
-    });
-    return false;
-  }
-
-  try {
-    await canvasUserClient.apiCall('canvases.share', {
-      canvas_id: canvasId,
-      share: { user_ids: [userId] },
-    });
-    return true;
-  } catch (error) {
-    console.warn('[canvas] Failed to share existing Canvas, falling back to info DM.', error);
-    await client.chat.postMessage({
-      channel: userId,
-      text: canvasTitle
-        ? `I couldn't share *${canvasTitle}*. Please make sure I have Canvas permissions and try again.`
-        : 'I could not share that Canvas. Please verify it still exists.',
-    });
-    return false;
-  }
-}
-
 function buildBlocksFromBrief(brief: BriefContent): KnownBlock[] {
   const blocks: KnownBlock[] = [
     {

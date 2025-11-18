@@ -1,6 +1,6 @@
 import { DataSourceOption } from '../../types';
 import { buildBrief } from '../../services/briefBuilder';
-import { deliverBrief, shareExistingCanvas } from '../../services/canvas';
+import { deliverBrief } from '../../services/canvas';
 import { getUserPreference, updateUserPreference } from '../../store/userPrefs';
 import { getAccountById } from '../../data/mockCustomerData';
 import { getCanvasFileById } from '../../services/canvasFiles';
@@ -31,27 +31,19 @@ export async function handleExecutiveBriefSubmission({
       const account = getAccountById(request.accountId);
       const canvasMeta =
         (await getCanvasFileById(client, undefined, preference.selectedCanvasId)) || undefined;
-      const shared = await shareExistingCanvas({
+      await sendPrebuiltConfirmation({
         client,
         userId: body.user.id,
-        canvasId: preference.selectedCanvasId,
+        accountName: account?.accountName,
+        accountSummary: account?.summary,
+        accountHighlights: {
+          industry: account?.industry,
+          stage: account?.stage,
+          pipe: account?.metrics.pipeCoverage,
+        },
         canvasTitle: canvasMeta?.title || preference.selectedCanvasTitle,
+        canvasLink: canvasMeta?.permalink,
       });
-      if (shared) {
-        await sendPrebuiltConfirmation({
-          client,
-          userId: body.user.id,
-          accountName: account?.accountName,
-          accountSummary: account?.summary,
-          accountHighlights: {
-            industry: account?.industry,
-            stage: account?.stage,
-            pipe: account?.metrics.pipeCoverage,
-          },
-          canvasTitle: canvasMeta?.title || preference.selectedCanvasTitle,
-          canvasLink: canvasMeta?.permalink,
-        });
-      }
       return;
     }
 
