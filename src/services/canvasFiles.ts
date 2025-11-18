@@ -42,8 +42,8 @@ export async function listCanvasFiles(
 
   const response: any = await client.files.list({
     token,
-    types: 'spaces',
-    count: 100,
+    types: 'canvas',
+    limit: 100,
   });
 
   const files: CanvasFileMeta[] = (response?.files || [])
