@@ -5,11 +5,6 @@ const useCanvasApi = process.env.USE_CANVAS_API === 'true';
 const canvasUserToken = process.env.SLACK_USER_TOKEN;
 const canvasUserClient = canvasUserToken ? new WebClient(canvasUserToken) : null;
 
-export interface CanvasSummary {
-  id: string;
-  title: string;
-}
-
 export async function deliverBrief(args: {
   client: WebClient;
   userId: string;
@@ -58,14 +53,14 @@ export async function shareExistingCanvas({
   userId: string;
   canvasId: string;
   canvasTitle?: string;
-}): Promise<void> {
+}): Promise<boolean> {
   if (!canvasUserClient) {
     console.warn('[canvas] Missing Canvas user token; cannot share existing Canvas.');
     await client.chat.postMessage({
       channel: userId,
       text: 'Canvas sharing is unavailable because SLACK_USER_TOKEN is not configured.',
     });
-    return;
+    return false;
   }
 
   try {
@@ -73,10 +68,7 @@ export async function shareExistingCanvas({
       canvas_id: canvasId,
       share: { user_ids: [userId] },
     });
-    await client.chat.postMessage({
-      channel: userId,
-      text: `Shared Canvas${canvasTitle ? ` *${canvasTitle}*` : ''} in your Messages tab.`,
-    });
+    return true;
   } catch (error) {
     console.warn('[canvas] Failed to share existing Canvas, falling back to info DM.', error);
     await client.chat.postMessage({
@@ -85,28 +77,7 @@ export async function shareExistingCanvas({
         ? `I couldn't share *${canvasTitle}*. Please make sure I have Canvas permissions and try again.`
         : 'I could not share that Canvas. Please verify it still exists.',
     });
-  }
-}
-
-export async function listAvailableCanvases(client: WebClient): Promise<CanvasSummary[]> {
-  const apiClient = canvasUserClient || client;
-  if (!canvasUserClient) {
-    console.warn('[canvas] Missing Canvas user token; cannot list canvases.');
-    return [];
-  }
-
-  try {
-    const response = (await apiClient.apiCall('canvases.list', { limit: 50 })) as any;
-    const canvases = response?.canvases || response?.items || [];
-    return canvases
-      .map((canvas: any) => ({
-        id: canvas?.id || canvas?.canvas_id,
-        title: canvas?.title || canvas?.name || 'Untitled Canvas',
-      }))
-      .filter((canvas: CanvasSummary) => Boolean(canvas.id));
-  } catch (error) {
-    console.warn('[canvas] Unable to list canvases', error);
-    return [];
+    return false;
   }
 }
 

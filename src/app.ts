@@ -7,6 +7,7 @@ import { DataSourceOption } from './types';
 import { handleExecutiveBriefSubmission } from './modals/executiveBrief/submit';
 import { openSettingsModal, handleSettingsSubmission, handleSettingsReset } from './modals/settingsModal';
 import { updateUserPreference } from './store/userPrefs';
+import { filterCanvasFiles, listCanvasFiles, toSlackOption } from './services/canvasFiles';
 
 dotenv.config();
 
@@ -105,6 +106,19 @@ app.action('settings_reset_action', async ({ ack, body, client, logger }) => {
     });
   } catch (error) {
     logger.error('Failed to reset settings', error);
+  }
+});
+
+app.options('canvas_select_action', async ({ ack, body, client, context, logger }) => {
+  try {
+    const files = await listCanvasFiles(client, context.botToken);
+    const filtered = filterCanvasFiles(files, (body as any).value).slice(0, 50);
+    await ack({
+      options: filtered.map(toSlackOption),
+    });
+  } catch (error) {
+    logger?.error?.('Failed to load Canvas options', error);
+    await ack({ options: [] });
   }
 });
 

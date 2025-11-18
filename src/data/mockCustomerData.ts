@@ -138,6 +138,44 @@ export const accounts: AccountRecord[] = [
       { name: 'Einstein Copilot Expansion', value: '$2.1M', nextStep: 'Schedule innovation day with ELT' },
       { name: 'Horizon Joint GTM Pack', value: '$900k', nextStep: 'Align on funding split' }
     ]
+  },
+  {
+    id: 'acc-acme',
+    accountName: 'Acme Retail',
+    companyName: 'Acme Retail Company',
+    localName: 'Acme Retail Company',
+    aov: '$1.2M',
+    industry: 'Retail & Consumer Goods',
+    hq: 'Chicago, IL',
+    stage: 'Expansion',
+    fiscalYearEnd: 'January',
+    summary:
+      'Acme Retail is rolling out a unified storefront experience and needs coordinated carrier-backed promotions across flagship outlets.',
+    carrierRelationship:
+      'Carrier partner: Summit Mobile across US & Canada. Joint executive sponsor program focused on connected store experiences.',
+    metrics: {
+      pipeCoverage: '2.6x coverage vs. FY25 plan',
+      acvYoY: '+15% YoY ACV growth',
+      productAdoption: '61% adoption of Slack Retail Execution kits',
+      supportHealth: 'No Sev-1s in the last 120 days',
+      csat: '4.5 / 5 retail exec CSAT',
+    },
+    goals: [
+      'Launch carrier-backed connected store pilots in five marquee cities',
+      'Consolidate merchandising signals into Customer 360 + Slack alerts',
+    ],
+    risks: [
+      'In-store ops talent gap slowing rollout of new workflows',
+      'Carrier incentives tied to Q3 sell-through thresholds',
+    ],
+    contacts: [
+      { name: 'Julia Martinez', role: 'SVP, Stores', notes: 'Executive sponsor for connected store motion' },
+      { name: 'Kenji Arai', role: 'Director, Retail Technology', notes: 'Owns Slack workflow expansion' },
+    ],
+    opportunities: [
+      { name: 'Retail Execution Automation', value: '$1.2M', nextStep: 'Schedule executive blueprint review' },
+      { name: 'Connected Store Analytics', value: '$450k', nextStep: 'Align on carrier-funded pilot budget' },
+    ],
   }
 ];
 

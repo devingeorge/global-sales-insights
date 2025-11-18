@@ -22,6 +22,7 @@
     "scopes": {
       "bot": [
         "chat:write",
+        "files:read",
         "files:write",
         "users:read",
         "users.profile:read"

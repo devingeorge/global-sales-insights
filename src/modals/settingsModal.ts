@@ -1,7 +1,7 @@
 import { WebClient, View } from '@slack/web-api';
 import { getUserPreference, resetUserPreference, updateUserPreference } from '../store/userPrefs';
 import { DataSourceOption } from '../types';
-import { CanvasSummary, listAvailableCanvases } from '../services/canvas';
+import { getCanvasFileById } from '../services/canvasFiles';
 
 export async function openSettingsModal({
   client,
@@ -13,14 +13,12 @@ export async function openSettingsModal({
   userId: string;
 }) {
   const preference = getUserPreference(userId);
-  const canvases = await listAvailableCanvases(client);
   await client.views.open({
     trigger_id: triggerId,
     view: buildSettingsView({
       selectedSource: preference.dataSource,
       selectedCanvasId: preference.selectedCanvasId,
       selectedCanvasTitle: preference.selectedCanvasTitle,
-      canvases,
     }),
   });
 }
@@ -29,7 +27,6 @@ interface BuildSettingsArgs {
   selectedSource: DataSourceOption;
   selectedCanvasId?: string;
   selectedCanvasTitle?: string;
-  canvases: CanvasSummary[];
 }
 
 interface SelectedCanvasOption {
@@ -43,25 +40,14 @@ function buildSettingsView({
   selectedSource,
   selectedCanvasId,
   selectedCanvasTitle,
-  canvases,
 }: BuildSettingsArgs): View {
-  const canvasOptions = canvases.map((canvas) => ({
-    text: { type: 'plain_text', text: canvas.title.slice(0, 75) },
-    value: canvas.id,
-  }));
-  let selectedCanvas = canvasOptions.find((option) => option.value === selectedCanvasId);
-  if (selectedCanvasId && !selectedCanvas) {
-    const fallbackOption = {
-      text: {
-        type: 'plain_text',
-        text: `${selectedCanvasTitle || 'Previously selected Canvas'} (not found)`.slice(0, 75),
-      },
-      value: selectedCanvasId,
-    };
-    canvasOptions.unshift(fallbackOption);
-    selectedCanvas = fallbackOption;
-  }
-
+  const initialCanvasOption =
+    selectedCanvasId && selectedCanvasTitle
+      ? {
+          text: { type: 'plain_text', text: selectedCanvasTitle.slice(0, 75) },
+          value: selectedCanvasId,
+        }
+      : undefined;
   return {
     type: 'modal',
     callback_id: 'settings_modal',
@@ -94,16 +80,14 @@ function buildSettingsView({
         label: { type: 'plain_text', text: 'Slack Canvas (used when Prebuilt is selected)' },
         hint: {
           type: 'plain_text',
-          text: canvases.length ? 'Pick an existing Canvas to send instantly.' : 'No canvases found. Create one in Slack first.',
+          text: 'Start typing to search the Slack Canvas library.',
         },
         element: {
-          type: 'static_select',
+          type: 'external_select',
           action_id: 'canvas_select_action',
-          placeholder: { type: 'plain_text', text: canvases.length ? 'Select a Canvas' : 'No canvases available' },
-          options: canvasOptions.length
-            ? canvasOptions
-            : [{ text: { type: 'plain_text', text: 'No Canvases Available' }, value: 'none' }],
-          initial_option: selectedCanvas,
+          placeholder: { type: 'plain_text', text: 'Search Slack Canvases' },
+          min_query_length: 1,
+          initial_option: initialCanvasOption,
         },
       },
       {
@@ -155,11 +139,16 @@ export async function handleSettingsSubmission({
   dataSource: DataSourceOption;
   selectedCanvasOption?: SelectedCanvasOption;
 }) {
-  const selectedCanvasId =
+  let selectedCanvasId =
     selectedCanvasOption?.value && selectedCanvasOption.value !== 'none'
       ? selectedCanvasOption.value
       : undefined;
-  const selectedCanvasTitle = selectedCanvasOption?.text?.text;
+  let selectedCanvasTitle = selectedCanvasOption?.text?.text;
+
+  if (selectedCanvasId && !selectedCanvasTitle) {
+    const meta = await getCanvasFileById(client, undefined, selectedCanvasId);
+    selectedCanvasTitle = meta?.title;
+  }
 
   updateUserPreference(userId, {
     dataSource,
@@ -184,7 +173,6 @@ export async function handleSettingsReset({
   viewHash?: string;
 }) {
   const preference = resetUserPreference(userId);
-  const canvases = await listAvailableCanvases(client);
   await client.views.update({
     view_id: viewId,
     hash: viewHash,
@@ -192,7 +180,6 @@ export async function handleSettingsReset({
       selectedSource: preference.dataSource,
       selectedCanvasId: preference.selectedCanvasId,
       selectedCanvasTitle: preference.selectedCanvasTitle,
-      canvases,
     }),
   });
   await client.chat.postMessage({

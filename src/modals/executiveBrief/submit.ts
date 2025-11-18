@@ -2,6 +2,9 @@ import { DataSourceOption } from '../../types';
 import { buildBrief } from '../../services/briefBuilder';
 import { deliverBrief, shareExistingCanvas } from '../../services/canvas';
 import { getUserPreference, updateUserPreference } from '../../store/userPrefs';
+import { getAccountById } from '../../data/mockCustomerData';
+import { getCanvasFileById } from '../../services/canvasFiles';
+import { WebClient, KnownBlock } from '@slack/web-api';
 
 export async function handleExecutiveBriefSubmission({
   ack,
@@ -25,12 +28,30 @@ export async function handleExecutiveBriefSubmission({
         });
         return;
       }
-      await shareExistingCanvas({
+      const account = getAccountById(request.accountId);
+      const canvasMeta =
+        (await getCanvasFileById(client, undefined, preference.selectedCanvasId)) || undefined;
+      const shared = await shareExistingCanvas({
         client,
         userId: body.user.id,
         canvasId: preference.selectedCanvasId,
-        canvasTitle: preference.selectedCanvasTitle,
+        canvasTitle: canvasMeta?.title || preference.selectedCanvasTitle,
       });
+      if (shared) {
+        await sendPrebuiltConfirmation({
+          client,
+          userId: body.user.id,
+          accountName: account?.accountName,
+          accountSummary: account?.summary,
+          accountHighlights: {
+            industry: account?.industry,
+            stage: account?.stage,
+            pipe: account?.metrics.pipeCoverage,
+          },
+          canvasTitle: canvasMeta?.title || preference.selectedCanvasTitle,
+          canvasLink: canvasMeta?.permalink,
+        });
+      }
       return;
     }
 
@@ -63,4 +84,102 @@ function parseSubmission(view: any, requesterId: string) {
     viewAsUserId,
     requesterId,
   };
+}
+
+interface PrebuiltConfirmationArgs {
+  client: WebClient;
+  userId: string;
+  accountName?: string;
+  accountSummary?: string;
+  accountHighlights?: {
+    industry?: string;
+    stage?: string;
+    pipe?: string;
+  };
+  canvasTitle?: string;
+  canvasLink?: string;
+}
+
+async function sendPrebuiltConfirmation({
+  client,
+  userId,
+  accountName,
+  accountSummary,
+  accountHighlights,
+  canvasTitle,
+  canvasLink,
+}: PrebuiltConfirmationArgs) {
+  const blocks: KnownBlock[] = [
+    {
+      type: 'header',
+      text: { type: 'plain_text', text: 'Executive Brief requested' },
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `You have requested a GSI generated Executive Brief${
+          accountName ? ` for *${accountName}*` : ''
+        }.`,
+      },
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: 'Please allow a few moments while it is generated. ⏳ You will receive another message in this window when it is ready for your use.',
+      },
+    },
+  ];
+
+  if (canvasLink || canvasTitle) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: canvasLink
+          ? `<${canvasLink}|${canvasTitle || 'View Canvas'}>`
+          : `Canvas: *${canvasTitle}*`,
+      },
+    });
+  }
+
+  if (accountSummary) {
+    blocks.push({
+      type: 'context',
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: accountSummary.slice(0, 280),
+        },
+      ],
+    });
+  }
+
+  if (
+    accountHighlights?.industry ||
+    accountHighlights?.stage ||
+    accountHighlights?.pipe
+  ) {
+    const fields: { type: 'mrkdwn'; text: string }[] = [];
+    if (accountHighlights.industry) {
+      fields.push({ type: 'mrkdwn', text: `*Industry*\n${accountHighlights.industry}` });
+    }
+    if (accountHighlights.stage) {
+      fields.push({ type: 'mrkdwn', text: `*Stage*\n${accountHighlights.stage}` });
+    }
+    if (accountHighlights.pipe) {
+      fields.push({ type: 'mrkdwn', text: `*Pipeline*\n${accountHighlights.pipe}` });
+    }
+    blocks.push({
+      type: 'section',
+      fields,
+    });
+  }
+
+  await client.chat.postMessage({
+    channel: userId,
+    text: 'Executive Brief requested',
+    blocks,
+  });
 }
