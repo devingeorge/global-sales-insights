@@ -5,7 +5,7 @@ import { openTemplateModal } from './modals/executiveBrief/openTemplateModal';
 import { buildInputsModal } from './modals/executiveBrief/openInputsModal';
 import { DataSourceOption } from './types';
 import { handleExecutiveBriefSubmission } from './modals/executiveBrief/submit';
-import { openSettingsModal, handleSettingsSubmission, handleSettingsReset } from './modals/settingsModal';
+import { openSettingsModal, handleSettingsSubmission, handleSettingsReset, handleSettingsClearMessages } from './modals/settingsModal';
 import { updateUserPreference } from './store/userPrefs';
 
 dotenv.config();
@@ -55,12 +55,8 @@ app.action('action_executive_brief', async ({ ack, body, client, logger }) => {
 
 const disabledActions = ['action_account_insights', 'action_deck_automation', 'action_release_notes'];
 disabledActions.forEach((actionId) => {
-  app.action(actionId, async ({ ack, body, client }) => {
+  app.action(actionId, async ({ ack }) => {
     await ack();
-    await client.chat.postMessage({
-      channel: body.user.id,
-      text: 'Thanks for your interest! This module is coming soon in the Global Sales Insights demo.',
-    });
   });
 });
 
@@ -105,6 +101,24 @@ app.action('settings_reset_action', async ({ ack, body, client, logger }) => {
     });
   } catch (error) {
     logger.error('Failed to reset settings', error);
+  }
+});
+
+app.action('settings_clear_messages', async ({ ack, body, client, logger }) => {
+  await ack();
+  try {
+    const view = (body as any).view;
+    if (!view?.id) {
+      return;
+    }
+    await handleSettingsClearMessages({
+      client,
+      userId: body.user.id,
+      viewId: view.id,
+      viewHash: view.hash,
+    });
+  } catch (error) {
+    logger.error('Failed to clear messages tab', error);
   }
 });
 

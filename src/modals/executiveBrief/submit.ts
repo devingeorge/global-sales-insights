@@ -13,8 +13,6 @@ export async function handleExecutiveBriefSubmission({
   logger,
   view,
 }: any) {
-  await ack();
-
   try {
     const request = parseSubmission(view, body.user.id);
     updateUserPreference(body.user.id, { viewAsUserId: request.viewAsUserId });
@@ -22,12 +20,15 @@ export async function handleExecutiveBriefSubmission({
     if (request.dataSource === 'prebuilt') {
       const preference = getUserPreference(body.user.id);
       if (!preference.selectedCanvasId) {
-        await client.chat.postMessage({
-          channel: body.user.id,
-          text: 'Prebuilt mode needs a Canvas selected in Settings. Pick one and try again.',
+        await ack({
+          response_action: 'errors',
+          errors: {
+            canvas_select: 'Select a Canvas in Settings before sending.',
+          },
         });
         return;
       }
+      await ack();
       const account = getAccountById(request.accountId);
       const canvasMeta =
         (await getCanvasFileById(client, undefined, preference.selectedCanvasId)) || undefined;
@@ -47,17 +48,16 @@ export async function handleExecutiveBriefSubmission({
       return;
     }
 
+    await ack();
     const brief = await buildBrief(request);
     await deliverBrief({ client, userId: body.user.id, brief });
   } catch (error) {
     logger?.error?.('Failed to generate brief', error);
-    await client.chat.postMessage({
-      channel: body.user.id,
-      text:
-        error instanceof Error
-          ? `I couldn't create that brief: ${error.message}`
-          : 'Something went wrong creating your brief. Please try again.',
-    });
+    try {
+      await ack();
+    } catch {
+      // ignore double-ack errors
+    }
   }
 }
 

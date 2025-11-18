@@ -5,7 +5,7 @@ A demo-ready Slack Bolt (Node.js + TypeScript) app that recreates the Global Sal
 ## Features
 - App Home layout that mirrors the provided design: welcome copy, "Key Use Cases" link, Action Hub buttons, and a View-As picker.
 - Executive Meeting Brief workflow with two modals (template selection + detailed inputs).
-- Settings modal that persists per-user data source preferences (stored in `.data/user-preferences.json`), including a live Slack Canvas search (via `files.list`) and a one-click reset.
+- Settings modal that persists per-user data source preferences (stored in `.data/user-preferences.json`), including a live Slack Canvas search (via `files.list`), a one-click reset, and a **Clear Messages Tab** button to wipe prior bot DMs.
 - Mock customer dataset with three fully-populated accounts, plus three prebuilt Canvas markdown templates.
 - Optional OpenAI integration (`OPENAI_API_KEY`) to generate narrative content.
 - Canvas delivery helper that uses Slack's Canvases API when available or falls back to a DM containing Block Kit plus a Markdown attachment.
@@ -64,7 +64,7 @@ PORT=3000
 ## Slack app setup (manual steps outside this repo)
 1. Create the Slack app at https://api.slack.com/apps → “From scratch”.
 2. Paste the manifest in `manifest/product-slack-app-manifest.json` (update the URLs for your Render instance) or manually configure:
-   - Bot scopes: `chat:write`, `files:read`, `files:write`, `users:read`, `users.profile:read`.
+   - Bot scopes: `chat:write`, `im:history`, `files:read`, `files:write`, `users:read`, `users.profile:read`.
    - User scopes: `canvases:read`, `canvases:write` (installing the app will produce a user token used for Canvas APIs).
    - Enable App Home (Home + Messages tabs), Interactivity, and the `app_home_opened` event.
 3. Install the app to your workspace to obtain the **Bot User OAuth Token**.
@@ -75,7 +75,7 @@ PORT=3000
 ## Data sources
 - **Mocked Data**: Uses the sample accounts under `src/data/mockCustomerData.ts` to build rich sections (metrics, goals, risks, contacts, opportunities).
 - **LLM Generated**: Calls OpenAI (if configured) with the selected account context to produce narrative markdown.
-- **Prebuilt Canvas**: Shares an existing Slack Canvas that you select in **Settings**. Pick a Canvas once, keep the familiar template + inputs flow, and the bot DM's the Canvas (with an “Executive Brief requested” summary) via its Messages tab when you submit (requires a `SLACK_USER_TOKEN` with `canvases:read` + `canvases:write` user scopes).
+- **Prebuilt Canvas**: Shares an existing Slack Canvas that you select in **Settings**. Pick a Canvas once, keep the familiar template + inputs flow, and the bot only DM's the Canvas link (with an “Executive Brief requested” summary) when the share succeeds (requires a `SLACK_USER_TOKEN` with `canvases:read` + `canvases:write` user scopes).
 
 ## Running the workflow
 1. Open the app’s Home tab → pick a “View As” persona.
@@ -83,7 +83,7 @@ PORT=3000
    - Step 1: pick a template (same modal regardless of data source).
    - Step 2: choose “View As”, account, and local name & AOV.
 3. On submit, the app saves your preferences, generates the brief, uploads the markdown, and DMs you the Canvas or fallback message.
-4. Use the **Settings** button any time to switch among Mock / LLM / Prebuilt modes, pick which Slack Canvas to send, or hit **Reset Settings** for a clean slate.
+4. Use the **Settings** button any time to switch among Mock / LLM / Prebuilt modes, pick which Slack Canvas to send, clear the Messages tab, or hit **Reset Settings** for a clean slate.
 
 ## Assets for demos
 - Mock accounts: Supercell Games NA, Northwind Logistics, Contoso Retail APAC.
