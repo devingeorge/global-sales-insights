@@ -112,7 +112,7 @@ export const accounts: AccountRecord[] = [
     stage: 'Priority Global',
     fiscalYearEnd: 'June',
     summary:
-      'Contoso is consolidating loyalty, service, and marketing data to create a cross-carrier shopper program across APAC mega cities.',
+      'CBRE is modernizing its global facilities portfolio with carrier-enabled smart building telemetry, unified occupier analytics, and executive-ready insights for large enterprise clients.',
     carrierRelationship:
       'Carrier partner: Horizon Mobile across SG/HK/AU. Running co-funded media pilots tied to loyalty tiers.',
     metrics: {
