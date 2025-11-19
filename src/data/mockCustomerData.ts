@@ -103,9 +103,9 @@ export const accounts: AccountRecord[] = [
   },
   {
     id: 'acc-contoso',
-    accountName: 'Contoso Retail APAC',
-    companyName: 'Contoso Retail',
-    localName: 'APAC HQ',
+    accountName: 'CBRE Group',
+    companyName: 'CBRE Group',
+    localName: 'CBRE',
     aov: '$3.8M',
     industry: 'Retail & Consumer Goods',
     hq: 'Singapore',
